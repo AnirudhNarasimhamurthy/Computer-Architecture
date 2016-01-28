@@ -1,0 +1,233 @@
+\documentclass[11pt]{article}
+\usepackage{euscript}
+\usepackage{listings}
+\usepackage{amsmath}
+\usepackage{amsthm}
+\usepackage{amssymb}
+\usepackage{epsfig}
+\usepackage{xspace}
+\usepackage{color}
+\usepackage{url}
+\usepackage{hyperref}
+\usepackage{multirow}
+\usepackage{algorithm} 
+\usepackage{algorithmic}
+\usepackage[makeroom]{cancel}
+%\usepackage{algpseudocode}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\setlength{\textheight}{9in}
+\setlength{\topmargin}{-0.600in}
+\setlength{\headheight}{0.2in}
+\setlength{\headsep}{0.250in}
+\setlength{\footskip}{0.5in}
+\flushbottom
+\setlength{\textwidth}{6.5in}
+\setlength{\oddsidemargin}{0in}
+\setlength{\evensidemargin}{0in}
+\setlength{\columnsep}{2pc}
+\setlength{\parindent}{1em}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\definecolor{mygreen}{rgb}{0,0.6,0}
+
+\newcommand{\eps}{\varepsilon}
+
+\renewcommand{\c}[1]{\ensuremath{\EuScript{#1}}}
+\renewcommand{\b}[1]{\ensuremath{\mathbb{#1}}}
+\newcommand{\s}[1]{\textsf{#1}}
+\newcommand{\bw}{{\bf w}}
+\newcommand{\bx}{{\bf x}}
+\newcommand{\bz}{{\bf z}}
+\newcommand\algorithmicinput{\textbf{Input:}}
+\newcommand\INPUT{\item[\algorithmicinput]}
+\newcommand{\E}{\textbf{\textsf{E}}}
+\renewcommand{\Pr}{\textbf{\textsf{Pr}}}
+
+
+\title{CS 6810 - Assignment 10 
+\footnote{\s{CS 6810 ; \;\; Spring 2015 \hfill}
+}
+}
+
+\author{Anirudh Narasimhamurthy(u0941400)}
+
+
+\begin{document}
+\maketitle
+
+\lstset{language=python} 
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\section{Consistency Models}
+
+
+\begin{itemize}
+	
+	\item[]  We are given a multi-threaded program containing two threads T1 and T2 and are asked to report the possible values of the variable A during the execution. The threads contain the following instructions:
+	
+	\item[]  \textbf{Thread 1:}\\
+	\textbf{a:} B=8;    \\
+	\textbf{b:} A=4;
+
+	\item[] \textbf{Thread 2:}\\
+	\textbf{A:} if (A+B> 10)\\
+	\textbf{B:} then A=A+B;\\
+	\textbf{C:} print A 
+
+	\item[] We are also given the information, that before these threads start executing. A and B are both initialized to zero.
+	
+	\item[] Since we are in the context of sequential consistency models, we have the following assumptions:\\
+	1. Instructions are executed atomically\\
+	2. Program order is followed for instuctions within a single thread.\\
+	3. Instructions from different threads can be interleaved arbitrarily.
+	
+	\item[]  With the above assumptions and the model, the total no of possible/ valid combinations of instructions execution in our multi-threaded program would be $\binom{4}{2} = 6$. This is because Thread 1 has two instructions and I am assuming that the If and Then statements in Thread 2 would always occur together as it would make more logical sense.
+	
+	\newpage
+	\item[] Based on the different combinations, the values of "print A" which we obtain are tabulated below:
+	
+	\begin{table}[h]
+		\centering
+		\begin{tabular}{|c|c|c|}
+			\hline
+			\textbf{Combination }  & \textbf{Value of A} & \textbf{Explanation}  \\
+			\hline
+			abABC & 12  & A+B =12 $>$ 10, A=A+B\\
+			\hline
+			ABCab & 0 & A+B=0 $<$ 10, A=0 \\
+			\hline
+			ABabC & 4 & A+B=0 $<$ 10 , A=4 gets executed and then print statement executes \\
+			\hline
+			ABaCb& 0 & A+B=0 $<$ 10, B=4  \\
+			\hline
+			aABbC & 4 & A+B=8 $<$ 12, A=4 gets executed and then print statement executes\\
+			\hline  
+			aABCb & 0 & A+B=8 $<$ 12, print gets executed and then A=4 gets executed \\ \hline 
+		\end{tabular}
+		\caption{Valid outputs of A}
+		\label{t2}
+	\end{table}
+	
+Thus the valid outputs of A for sequentially consistent execution of the program is \textbf{$\boxed{\{\text{0, 4, 12}\}}$}
+
+
+\item[] \textbf{\underline{ Coarse-Grained Lock Scenario}}
+
+\item[] When the code is encapsulated within lock and unlock statements as shown below, the valid values of A would change.
+
+\item[]  \textbf{Thread 1:}\\
+lock(L1) \\
+\textbf{a:} B=8;    \\
+\textbf{b:} A=4; \\
+unlock(L1)
+
+\item[] \textbf{Thread 2:}\\
+lock(L1) \\
+\textbf{A:} if (A+B> 10)\\
+\textbf{B:} then A=A+B;\\
+\textbf{C:} print A \\
+unlock(L1)
+
+
+\item[] The code shwon above makes use of coarse grained lock and in this scenario only one of the two threads would be able to obtain a lock and proceed with its execution. When a thread finishes its execution, it releases the lock and the other thread obtains the lock and begins its execution.
+
+\item[] Given the situation, this leads to two possible scenarios in our program.
+
+\item[] \textbf {Case 1: Thread 1 first acquires lock and then Thread 2 acquires the lock}
+
+In this case, the instructions a and b get executed first and then when Thread 2 starts executing, the if condition in A becomes true as A+B=12 $>$ 10 and so A=A+B, which would give us the value of 12.
+
+\item[] \textbf {Case 2: Thread 2 first acquires lock and then Thread 1 acquires the lock}
+
+In this case instructions ABC get executed first and then instructions ab get executed. When Instruction A executes, A=0 and B=0 and so the if condition evaluates to False. So the statement print A will print the latest value of A which is 0.
+
+\item[] Thus the valid outputs for A when the code is encapsulated within lock and unlock statements is \textbf {\boxed{$\text {0 and 12} $}}
+\end{itemize}	
+
+
+\section{Consistency Models}
+
+\begin{itemize}
+	\item[] \textbf{How are modern processors able to provide sequentially consistent results for multi-threaded programs ?}
+	
+	Modern processors provide sequential consistency by implementing or making sure the following assumptions are working right.
+	
+	1. Instructions are executed \textbf{atomically.} This ensures that before one instruction completes its execution another instruction cannot change or modify the same variable which the previous instruction was still working on and allow the previous instruction to commit. Atomicity ensures instructions are executed either in complete or rolled or aborted back.\\
+	
+	2. The \textbf{program order} is followed while executing instructions within a single thread. However instructions from threads can be interleaved arbitrarily and this combined with the atomicity property ensures \textbf{write serialization} happens correctly. That ensures  everyone has seen an update before the value for that variable is read. This ensures consistency.\\
+	
+	3. The cache coherence protocol implements this sequential consistency for modern processors. The process of making sure we receive Acknowledgements whenever we send out invalidate signals to other processors or threads makes sure that the correct value is propagated and sequential consistency is maintained across the multi threaded execution of the program.
+	
+	This is how modern processors are able to provide sequentially consistent results for multi-threaded programs.
+	
+	\item[] \textbf{How are modern processors able to provide high performance for multi-threaded programs ?}
+	
+	Sequential consistency model can be disrupted by hardware innovations such as out of order executions which generally make our execution faster and saves us time. So in a way sequential consistency model slows down the execution.
+	
+	But modern processors have the possibility of implementing few hardware optimizations to make sure it provides high perfomance even in this setting. Two such methods are mentioned below:
+	
+	\textbf{Issue Loads speculatively}\\
+	 We could still take advantage of faster execution offered by reorder buffer by this method. Since load instructions generally finish faster than store instructions which requires to obtain permissions to peform writes, we can allow the loads to be issued speculatively and proceed with the value.
+	 
+	 After the store gets committed and load becomes the oldest instruction in the LSQ, re-issue the Load again. If the new value given by the Load matches the  previous value, then our speculation was correct and we would provide better performance. If the new value was different from the speculated value, then we will have to re-issue the Load agin and execute all its dependent instructions to maintain sequential consistency.
+	 
+	 Even in this case, it is much better than having to wait for the Store to commit and then start the Load instruction by which time we would have lost a lot of time and performance might be slow.
+
+	\textbf{Acquire permissions speculatively}\\
+	Store takes a long time to complete once it gets to the top of the re-order buffer because it has to acquire permissions to write the block and them performs the write. But if we could obtain the permissions earlier, then that would improve the performance. Also speculating on permissions is safe as we would not be changing any result. Once we have the permisisons then it would take very less time to make updates as we would have it in our cache and we can modify the locaaly cached copy much faster.
+	
+	Modern processors either implement the above hardware optimizations or sometimes even prefer to work in a relaxed consistency model as opposed to sequential consistency model to provide higher performance.
+		
+\end{itemize}
+
+\section{Transactional Memory}
+
+\begin{itemize}
+	\item[] \textbf{How can a lazy-lazy transcational memory cause starvation in some programs ?}
+	
+	\item[] Consider the following example:
+	
+	\textbf{Transaction T1:}\\
+	Begin Transaction\\
+	$\{$\\
+	Read B \\
+	....\\
+	....\\
+	....\\
+	....\\
+	....\\
+	....\\
+	$\}$\\
+	End Transaction
+	
+	\textbf{Transaction T2:}\\
+	While\\
+	$\{$\\
+	Begin Transaction\\
+	$\{$\\
+	Write B\\
+	$\}$\\
+	End Transaction\\
+	$\}$\\
+	
+	\item[] Assuming the transaction in T1 is extremely long which takes long time to execute and assuming transaction  T2 is very short and finishes once it perfoms a Write B operation. So it acquires the token earlier than T1 and then sends the broadcast message to T1 asking it to invalidate its copy of B. It then commits and then starts the while loop again. 
+	
+	\item[] SInce it is a smaller transaction every time it gets executed it acquires the token and sends broadcast to T1 asking it to invalidate its copy of B and this results in T1 being continously aborted. This could continue forever and ever until the smaller transaction releases the token or stops its execution leading to a starvation for transaction T1  as it would not be able to complete its execution for a long time.
+	
+	
+	Thus because it performs lazy conflict detection or in other words deferring the conflict detection until atleast one of the transaction commits and since it performs a lazy versioning, the lazy-lazy transactional memory causes starvation in this case. The process of acquiring token to complete or abort a transcation makes it kind of lock like feature which we knew had its drawbacks of slow performance or leading to deadlocks.
+	
+	\item[] \textbf{Solution to starvation problem in lazy-lazy transactional memory}
+	
+	The solution in this case would be for Transaction T1 to realize its being aborted frequently and so it can send a request to central arbiter for the Commit Token say after it has been aborted 'M' number of times. And when it recieves one, it ensures that no other transaction can commit before T1. So the transaction T1 executes all of its instructions and goes to the very end. T2 in this case would have to wait for T1 to finish and can then proceed. T1 then releases the commit token and then T2 can acquire it from the central arbiter and proceed with it.
+	
+	Again this degenerates into lock based model where only one transaction can do its work at a time, thereby not allwoing parallel processing to take place. But this is still a much better and neater version of handling overflows than what we would have had in lock based model  and hence this could help avoid starvation in lazy-lazy transactional memory implementation.  
+\end{itemize}
+
+
+\end{document}
+
